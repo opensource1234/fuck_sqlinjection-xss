@@ -6,6 +6,8 @@ import os
 import sys
 import thread
 import re
+import cookielib
+
 
 # 目标站点域名
 host = "10.206.6.11"
@@ -76,13 +78,20 @@ def sqlmap_post(url):
     
     return 0
 
+# 使用sqlmap进行COOKIES注入测试
+def sqlmap_cookies(url, cookies):
+    
+    os.system("sqlmap -u %s --cookies=%s" % (url, cookies))
+    
+    return 0
+
 
 # 检测是否存在GET类型的sql注入
 def fuck_get_sqlinjection(target):
     
     for url in target:
         
-        # 获得Get请求中的参数
+        # 获得GET请求中的参数
         params = {}
         keys = ''
         hashs = ''
@@ -128,13 +137,37 @@ def fuck_post_sqlinjection(target):
             finally:
                 outputfile(url)
                 
-            
-        
-        
 
-
+# 检测是否存在COOKIES类型的注入
+def fuck_cookies_sqlinjection(host):
     
-            
+    
+    # 获取页面cookies
+    cj = cookielib.CookieJar()
+    
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+    
+    opener.add_handler = [('User-agent','Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)')]
+    
+    cookies = []
+    coo = ''
+    
+    for index,cookie in enumerate(cj):
+        coo = re.search(r" (.+) for ", str(cookie))
+        coo = coo.group(1)
+        cookies.append(coo)
+    
+    cookies = ';'.join(cookies)
+    
+    
+    # 测试sql注入
+    try:
+        sqlmap_cookies(host, cookies)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        outputfile(host)
+        
             
             
             
