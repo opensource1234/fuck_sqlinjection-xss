@@ -9,6 +9,7 @@ import re
 import cookielib
 
 
+
 # 目标站点域名
 host = "10.206.6.11"
 
@@ -58,8 +59,50 @@ def dict_to_list(d, middle):
         l.append("%s%s%s" % (str(key), str(middle), str(value)))
     return l
 
-'''
-# 构造新的Get请求
+
+# 获取页面源码
+def get_source(url):
+    
+    headers = {}
+    headers['User-Agent'] = 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)'
+    
+    request = urllib2.Request(url, headers=headers)
+    response = urllib2.urlopen(request)
+    
+    return response.read()
+
+
+# 解析url
+def url_params(url):
+    
+    start = -1
+    params = {}
+    hashs = ''
+    
+    start = url.find('?')
+    end = url.find('#')
+    
+    if start < 0:
+        if end > 0:
+            hashs = url[end:]
+    else:
+        
+        keys = ''
+    
+        if end > 0:
+            keys = url[start+1:end]
+            hashs = url[end:]
+        else:
+            keys = url[start+1:]
+    
+        keys = keys.split('&')
+        map(lambda x:params.setdefault(x.split('=')[0], x.split('=')[1]), keys)
+    
+    return start, params, hashs
+
+
+
+# 重构url
 def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
     
     paramscp[param] = "%s%s" % (str(value), str(fuzz))
@@ -70,7 +113,7 @@ def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
     newurl = "%s%s%s" % (url[:start+1], newkeys, hashs)
     
     return newurl
-'''
+
 
 # 生成sql注入测试结果文件
 def outputfile(url):
@@ -80,9 +123,14 @@ def outputfile(url):
     path = "/usr/share/sqlmap/output/%s/log" % host
         
     if os.path.isfile(path):
-        f = open(path, 'r')
-        content = f.read()
-        f.close()
+        
+        try:
+            f = open(path, 'r')
+            content = f.read()
+        except:
+            pass
+        finally:
+            f.close()
         
         # 某个参数检测完之后删除对应sqlmap日志目录
         os.system("rm -r /usr/share/sqlmap/output/%s" % host)
@@ -94,22 +142,47 @@ def outputfile(url):
             result += (re.search(r'---(.|\n)+---', str(content))).group(0)
             result += "\n\n"
             
-            filepath = "%s/result_sqlinjection.txt" % host
+            filepath = "output/%s/result_sqlinjection.txt" % host
             
-            output = open(filepath, 'r')
+            try:
+                output = open(filepath, 'r')
             
-            # 若与已得到的结果不重复则写入
-            out = output.read()
-            if result in out:
-                output.close()
-            else:
-                output.close()
-                
-                output = open(filepath, 'a')
-                output.write(result)
-                output.close()
+                # 若与已得到的结果不重复则写入
+                out = output.read()
+                if result in out:
+                    output.close()
+                else:
+                    output.close()
+                    
+                    try:
+                        output = open(filepath, 'a')
+                        output.write(result)
+                    except:
+                        pass
+                    finally:
+                        output.close()
+            except:
+                pass
     
     return 0
+
+
+# 生成XSS测试结果文件
+def outputfile2(url, result):
+    global host
+    
+    path = "output/%s/result_xss.txt" % host
+    
+    try:
+        f = open(path, 'a')
+        f.write("%s:\n%s" % (url, result))
+    except:
+        pass
+    finally:
+        f.close()
+    
+    return
+
 
 
 # 使用sqlmap进行GET注入测试
@@ -139,26 +212,11 @@ def fuck_get_sqlinjection(target):
     
     for url in target:
         
-        # 获得GET请求中的参数
-        params = {}
-        keys = ''
-        hashs = ''
+        start, params, hashs = url_params(url)
         
-        start = url.find('?')
-        if start < 0:
+        if params == {}:
             continue
-        else:
-            end = url.find('#')
-            
-            if end > 0:
-                keys = url[start+1:end]
-                hashs = url[end:]
-            else:
-                keys = url[start+1:]
-                
-            keys = keys.split('&')
-            map(lambda x:params.setdefault(x.split('=')[0], x.split('=')[1]), keys)
-            
+        
     
         # 依次对各参数进行GET注入测试     
         for param in params:
@@ -169,6 +227,8 @@ def fuck_get_sqlinjection(target):
                 continue
             finally:
                 outputfile(url)
+    
+    return
 
 # 检测是否存在POST类型的sql注入
 def fuck_post_sqlinjection(target):
@@ -184,6 +244,8 @@ def fuck_post_sqlinjection(target):
                 continue
             finally:
                 outputfile(url)
+    
+    return
                 
 
 # 检测是否存在COOKIES类型的注入
@@ -226,9 +288,92 @@ def fuck_cookies_sqlinjection(target):
             try:
                 sqlmap_cookies(url, cookies)
             except:
-                pass
+                continue
             finally:
                 outputfile(url)
+                
+    return
+
+
+# 检测是否存在反射型XSS
+def fuck_reflected_xss(target):
+    
+    result = ''
+    
+    # 读取xss_payload文件        
+    try:
+        f = open("config/xss_payload.txt", "r")
+        lines = f.readlines()
+    except:
+        pass
+    finally:
+        f.close()
+        
+    # 解析url并进行XSS测试    
+    for url in target:
+        
+        start = -1
+        params = {}
+        hashs = ''
+        
+        start, params, hashs = url_params(url)
+        
+        newurl = ''
+        source = ''
+        
+        # 测试HTTP header中的XSS(CRLF注入)
+        
+        
+        # 测试hash中的XSS
+        if hashs == "":
+            pass
+        else:
+            for line in lines:
+                
+                payload = "%s%s" % (hashs, line)
+                
+                newurl = get_newurl(url, start, payload, paramscp, param, value, '')
+        
+                print "[fragment XSS test] test : %s" % payload
+                source = get_source(newurl)
+                
+                if line in source:
+                    
+                    print "[*] Maybe find a XSS!"
+                    
+                    result = "Maybe there is a XSS in fragment! Payload : %s" % payload
+                    outputfile2(url, result)
+                    
+                    break        
+                              
+        # 测试GET参数中的XSS
+        if params == {}:
+            continue
+        
+        for param, value in params.iteritems():
+            
+            paramscp = params.copy()
+            
+            for line in lines:
+                
+                fuzz = line
+                payload = "%s%s" % (str(value), fuzz)
+                
+                newurl = get_newurl(url, start, hashs, paramscp, param, value, fuzz)
+                
+                source = get_source(newurl)
+                
+                if fuzz in source:
+                    
+                    print "[*] Maybe find a XSS!"
+                    
+                    result = "Maybe there is a XSS in parameter %s! Payload : %s" % (str(param), payload)
+                    outputfile2(url, result)                    
+                    
+                    break
+    
+    return
+
 
 
 # 主函数
@@ -237,7 +382,7 @@ def main():
     global host
     global target
     
-    path = "%s" % host
+    path = "output/%s" % host
     
     # 判断该网站是否经过sql注入测试
     
@@ -252,8 +397,13 @@ def main():
     if os.path.isfile("%s/result_sqlinjection.txt" % path) is False:
         os.system("touch %s/result_sqlinjection.txt" % path)
     
-    # 进行sql注入测试
+    if os.path.isfile("%s/result_xss.txt" % path) is False:
+        os.system("touch %s/result_xss.txt" % path)
+        
     
+    
+    
+    # 进行sql注入测试    
     fuck_cookies_sqlinjection(target)
     print '--------------------cookies over---------------------'
             
