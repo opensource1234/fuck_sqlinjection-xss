@@ -7,11 +7,15 @@ import sys
 import time
 import re
 import cookielib
-
+import random
+import string
 
 
 # 目标站点域名
 host = "10.206.6.11"
+
+# 爬取目标站点所有页面
+
 
 # 爬到的页面url
 target = {'http://10.206.6.11/new.php?id=2':[],
@@ -52,6 +56,42 @@ target = {'http://10.206.6.11/new.php?id=2':[],
 			<input type="submit" name="submit" value="提交" class="submails" />
 			</form>''',]}
 
+# 生成n字节随机字符串
+def get_randstr(n):
+    randstr = ''
+    ch = ''
+    
+    for i in xrange(n):
+        ch = string.join(random.sample(['z','y','x','w','v','u','t','s','r','q','p','o','n','m','l','k','j','i','h','g','f','e','d','c','b','a','0','1','2','3','4','5','6','7','8','9'], 1)).replace(' ','')
+        randstr += ch
+        
+    return randstr
+
+
+# 解析form表单
+
+
+# 填写表单得到POST字符串，并指定其中一个参数的值为Payload
+def get_POST_data(parsedform, param, payload):
+    
+    postdata = {}
+    
+    for postparam in parsedform:
+        if postparam == param:
+            postdata[postparam[1]] = payload
+        else:
+            if postparam[0].lower() in ['text', 'password', 'textarea',]:
+                postdata[postparam[1]] = get_randstr(8)
+            elif postparam[0].lower() in ['checkbox', 'radio', 'select',]:
+                postdata[postparam[1]] = postparam[2][0]
+            elif postparam[0].lower() == 'hidden':
+                postdata[postparam[1]] = postparam[2][0]
+            else:
+                pass
+    
+    return postdata
+
+
 # dict转化成list
 def dict_to_list(d, middle):
     l = []
@@ -60,7 +100,7 @@ def dict_to_list(d, middle):
     return l
 
 
-# 获取页面源码
+# 获取GET请求页面源码
 def get_source(url):
     
     headers = {}
@@ -109,7 +149,7 @@ def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
     newkeys = dict_to_list(params, '=')
     newkeys = '&'.join(newkeys)
 
-    # 新的Get请求
+    # 新的GET请求
     newurl = "%s%s%s" % (url[:start+1], newkeys, hashs)
     
     return newurl
@@ -132,14 +172,16 @@ def outputfile(url):
         finally:
             f.close()
         
-        # 某个参数检测完之后删除对应sqlmap日志目录
-        os.system("rm -r /usr/share/sqlmap/output/%s" % host)
+            # 某个参数检测完之后删除对应sqlmap日志目录
+            os.system("rm -r /usr/share/sqlmap/output/%s" % host)
             
         if content == '':
             pass
         else:
             result = "%s\n" % url
-            result += (re.search(r'---(.|\n)+---', str(content))).group(0)
+            resu = re.search(r'---(.|\n)+---', str(content))
+            if resu is not None:
+                result += (resu).group(0)
             result += "\n\n"
             
             filepath = "output/%s/result_sqlinjection.txt" % host
@@ -181,7 +223,7 @@ def outputfile2(url, result):
     finally:
         f.close()
     
-    return
+    return 0
 
 
 
@@ -272,8 +314,9 @@ def fuck_cookies_sqlinjection(target):
     
             for index,cookie in enumerate(cj):
                 coo = re.search(r" (.+) for ", str(cookie))
-                coo = coo.group(1)
-                cookies.append(coo)
+                if coo is not None:
+                    coo = coo.group(1)
+                    cookies.append(coo)
                 
             cookies = ';'.join(cookies)
             
@@ -321,8 +364,6 @@ def fuck_reflected_xss(target):
         newurl = ''
         source = ''
         
-        # 测试HTTP header中的XSS(CRLF注入)
-        
         
         # 测试hash中的XSS
         if hashs == "":
@@ -334,7 +375,7 @@ def fuck_reflected_xss(target):
                 
                 newurl = get_newurl(url, start, payload, paramscp, param, value, '')
         
-                print "[fragment XSS test] test : %s" % payload
+                print "[fragment XSS test] : %s" % payload
                 source = get_source(newurl)
                 
                 if line in source:
@@ -359,6 +400,8 @@ def fuck_reflected_xss(target):
                 fuzz = line
                 payload = "%s%s" % (str(value), fuzz)
                 
+                print "[get parameter XSS test] : %s" % payload
+                
                 newurl = get_newurl(url, start, hashs, paramscp, param, value, fuzz)
                 
                 source = get_source(newurl)
@@ -367,12 +410,81 @@ def fuck_reflected_xss(target):
                     
                     print "[*] Maybe find a XSS!"
                     
-                    result = "Maybe there is a XSS in parameter %s! Payload : %s" % (str(param), payload)
+                    result = "Maybe there is a XSS in get parameter %s! Payload : %s" % (str(param), payload)
                     outputfile2(url, result)                    
                     
                     break
     
     return
+
+
+# 检测是否存在存储型XSS
+def fuck_storage_xss(target):
+    global host
+    
+    result = ''
+        
+    # 读取xss_payload文件        
+    try:
+        f = open("config/xss_payload.txt", "r")
+        lines = f.readlines()
+    except:
+        pass
+    finally:
+        f.close()
+        
+    for url, forms in target.iteritems():
+        
+        if forms == []:
+            continue
+        
+        # 填写form表单并提交
+        for form in forms:
+            postdata = {}
+            action = ''
+            
+            # 得到表单提交地址
+            goal = re.search(r"action( |\n)*=( |\n)*\"((.|\n)*)\"", form)
+            if goal is not None:
+                go = goal.group(3)
+            
+            g = re.search(r'^http(s|)://', go)
+            if g is not None:
+                action = g.group(0)
+            else:
+                action = "http://%s/%s" % (host, g.group(0))
+            
+            # 填写表单参数
+            parsedform = parseform(form)
+            
+            for param in parsedform:
+                if param[0].lower() not in ['text', 'password', 'textarea',]:
+                    continue
+                
+                for line in lines:
+                    payload = line
+                    
+                    postdata = get_POST_data(parsedform, param, payload)
+                    
+                    # 提交表单
+                    print "[post parameter XSS test] : %s" % payload
+                    
+                    post_data = urllib.urlencode(postdata)
+                    req = urllib2.urlopen(action, post_data)
+                    
+                    source = get_source(url)
+                    
+                    if payload in source:
+                        
+                        print "[*] Maybe find a XSS!"
+                        
+                        result = "Maybe there is a XSS in post parameter %s! Payload : %s" % (str(param), payload)
+                        outputfile2(url, result)                    
+                        
+                        break               
+    
+    return
+
 
 
 
