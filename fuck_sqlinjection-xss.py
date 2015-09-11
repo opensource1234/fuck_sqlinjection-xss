@@ -4,6 +4,7 @@ import urllib2
 import urllib
 import os
 import sys
+import getopt
 import time
 import re
 import cookielib
@@ -11,13 +12,11 @@ import random
 import string
 
 
-# 目标站点域名
+# 目标站点(test)
 host = "10.206.6.11"
+hhost = "http://10.206.6.11:80"
 
-# 爬取目标站点所有页面
-
-
-# 爬到的页面url
+# 爬到的页面url(test)
 target = {'http://10.206.6.11/new.php?id=2':[],
           'http://10.206.6.11/book.php':[r'''<form name="from1" id="from1" method="post" action="book.php?action=add">
 			<table border="0" cellspacing="0" cellpadding="0" id="fortab">
@@ -56,6 +55,20 @@ target = {'http://10.206.6.11/new.php?id=2':[],
 			<input type="submit" name="submit" value="提交" class="submails" />
 			</form>''',]}
 
+# 一些全局变量
+sqli            = True
+xss             = True
+read_sqlmap     = '/usr/share/sqlmap/output'
+output          = './output'
+
+
+
+
+
+# 爬取目标站点所有页面
+
+
+
 # 生成n字节随机字符串
 def get_randstr(n):
     randstr = ''
@@ -71,6 +84,8 @@ def get_randstr(n):
 # 解析form表单
 
 
+
+
 # 填写表单得到POST字符串，并指定其中一个参数的值为Payload
 def get_POST_data(parsedform, param, payload):
     
@@ -81,7 +96,7 @@ def get_POST_data(parsedform, param, payload):
             postdata[postparam[1]] = payload
         else:
             if postparam[0].lower() in ['text', 'password', 'textarea',]:
-                postdata[postparam[1]] = get_randstr(8)
+                postdata[postparam[1]] = get_randstr(4)
             elif postparam[0].lower() in ['checkbox', 'radio', 'select',]:
                 postdata[postparam[1]] = postparam[2][0]
             elif postparam[0].lower() == 'hidden':
@@ -104,8 +119,7 @@ def dict_to_list(d, middle):
 def get_source(url):
     
     headers = {}
-    headers['User-Agent'] = 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)'
-    
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0'
     request = urllib2.Request(url, headers=headers)
     response = urllib2.urlopen(request)
     
@@ -146,7 +160,7 @@ def url_params(url):
 def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
     
     paramscp[param] = "%s%s" % (str(value), str(fuzz))
-    newkeys = dict_to_list(params, '=')
+    newkeys = dict_to_list(paramscp, '=')
     newkeys = '&'.join(newkeys)
 
     # 新的GET请求
@@ -158,9 +172,10 @@ def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
 # 生成sql注入测试结果文件
 def outputfile(url):
     global host
+    global read_sqlmap
         
     result = ""
-    path = "/usr/share/sqlmap/output/%s/log" % host
+    path = "%s/%s/log" % (read_sqlmap, host)
         
     if os.path.isfile(path):
         
@@ -305,7 +320,7 @@ def fuck_cookies_sqlinjection(target):
     
             opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
     
-            opener.add_handler = [('User-agent','Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)')]
+            opener.add_handler = [('User-agent','Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0')]
     
             opener.open(url)
     
@@ -420,7 +435,7 @@ def fuck_reflected_xss(target):
 
 # 检测是否存在存储型XSS
 def fuck_storage_xss(target):
-    global host
+    global hhost
     
     result = ''
         
@@ -444,15 +459,33 @@ def fuck_storage_xss(target):
             action = ''
             
             # 得到表单提交地址
-            goal = re.search(r"action( |\n)*=( |\n)*\"((.|\n)*)\"", form)
+            goal = re.search(r"action( |\n)*=( |\n)*\"((.|\n)*?)\"", form)
             if goal is not None:
                 go = goal.group(3)
             
-            g = re.search(r'^http(s|)://', go)
-            if g is not None:
-                action = g.group(0)
+                g = re.search(r'^http(s|)://', go)
+                if g is not None:
+                    action = go
+                else:
+                    g = re.search(r'^/', go)
+                
+                    if g is not None:
+                        action = "%s%s" % (hhost, go)
+                    else:
+                        if go == '':
+                            action = url
+                        else:
+                            g = re.search(r'.*/', url)
+                            direc = ''
+                    
+                            if g is not None:
+                                direc = g.group(0)
+                                action = "%s%s" % (direc, go)
+                            else:
+                                action = "%s/%s" % (url, go)
+            
             else:
-                action = "http://%s/%s" % (host, g.group(0))
+                continue
             
             # 填写表单参数
             parsedform = parseform(form)
@@ -485,16 +518,112 @@ def fuck_storage_xss(target):
     
     return
 
+# 帮助函数
+def usage():
+    print "Fuck XSS and SQLinjection Tool"
+    print
+    print "Usage: python fuck_sqlinjection-xss.py -t host"
+    print r'''-s --sqli          - Only SQL injection detection.'''
+    print r'''-x --xss           - Only XSS detection.'''
+    print r'''-r --read_sqlmap=sqlmap_output_dir   
+                                 - Specify sqlmap's output results directory.
+                                   Default : /usr/share/sqlmap/output'''
+    print r'''-o --output=result_output_dir        
+                                 - Specify test result output directory.
+                                   Default : ./output'''
+    print r'''-h --help          - Call this using menu.'''
+    print
+    print
+    print "Examples: "
+    print "python fuck_sqlinjection-xss.py -t www.test.com"
+    print "python fuck_sqlinjection-xss.py -t 10.206.6.11 -s"
+    print "python fuck_sqlinjection-xss.py -t http://www.test.com:81 --read_sqlmap=/temp/output"
+    print "python fuck_sqlinjection-xss.py -t https://www.test.com --output=/temp"
+    print
+    print "Tip: if the protocol is HTTPS or port is not 80 , please don't omit!"
+    
+    sys.exit(0)
+
 
 
 
 # 主函数
-def main():
-    
+def main():  
     global host
+    global hhost
     global target
     
-    path = "output/%s" % host
+    global sqli
+    global xss
+    global read_sqlmap
+    global output
+    
+    path = "%s/%s" % (output, host)
+    
+    # 读取命令行选项
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "sxr:o:ht:", ["sqli", "xss", "read_sqlmap", "output", "help", "target_host"])
+    except getopt.GetoptError as err:
+        print str(err)
+        usage()
+    
+    
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+        elif o in ("-s", "--sqli"):
+            if xss is False:
+                xss = True
+            else:
+                sqli = False
+        elif o in ("-x", "--xss"):
+            if sqli is False:
+                sqli = True
+            else:
+                xss = False
+        elif o in ("-r", "--read_sqlmap"):
+            b = re.search(r'/$', a)
+            
+            if b is None:
+                read_sqlmap = str(a)
+            else:
+                c = str(a)[:-1]
+                read_sqlmap = c
+        elif o in ("-o", "--output"):
+            b = re.search(r'/$', a)
+            
+            if b is None:
+                output = str(a)
+            else:
+                c = str(a)[:-1]
+                output = c
+        elif o in ("-t", "--target_host"):
+            d = re.search(r'/$', a)
+            
+            if d is not None:
+                c = str(a)[:-1]
+           
+            b = re.search(r'^http(s|)://', c)
+            
+            if b is None:
+                host = c
+                hhost = "http://%s" % c
+            else:
+                hhost = c
+                
+                e = re.search(r'^http(|s)://(.*)', c)
+                if e is not None:
+                    host = e.group(2)
+        else:
+            assert False, "Unhandled Option"
+        
+        
+    if hhost == "" or host == "":
+        print "Please specity the target host by option -t"
+        return
+    
+    
+    
     
     # 判断该网站是否经过sql注入测试
     
@@ -514,7 +643,7 @@ def main():
         
     
     
-    
+    '''
     # 进行sql注入测试    
     fuck_cookies_sqlinjection(target)
     print '--------------------cookies over---------------------'
@@ -529,7 +658,18 @@ def main():
     print '----------------------post over----------------------'
         
     time.sleep(5)
-      
+    '''
+    '''
+    # 进行XSS测试
+    fuck_reflected_xss(target)
+    print '------------ reflected xss over ------------'
+    
+    time.sleep(5)
+    fuck_storage_xss(target)
+    print '------------ storage xss over ------------'
+    time.sleep(5)
+    '''
+     
     return 0
 
 if __name__ == '__main__':

