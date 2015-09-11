@@ -558,7 +558,6 @@ def main():
     global read_sqlmap
     global output
     
-    path = "%s/%s" % (output, host)
     
     # 读取命令行选项
     try:
@@ -602,6 +601,8 @@ def main():
             
             if d is not None:
                 c = str(a)[:-1]
+            else:
+                c = str(a)
            
             b = re.search(r'^http(s|)://', c)
             
@@ -622,7 +623,7 @@ def main():
         print "Please specity the target host by option -t"
         return
     
-    
+    path = "%s/%s" % (output, host)
     
     
     # 判断该网站是否经过sql注入测试
