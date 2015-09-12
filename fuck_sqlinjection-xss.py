@@ -626,23 +626,99 @@ def main():
     path = "%s/%s" % (output, host)
     
     
-    # 判断该网站是否经过sql注入测试
+    if sqli == True:
+        
+        # 判断该网站是否经过sql注入测试
+        if os.path.isfile("%s/result_sqlinjection.txt" % path) is True:
+            an = raw_input("The site has tested SQL injection, whether to re test?[y/N]")
+            
+            if an == '':
+                sqli = False
+            else:
+                ans = an[:1]
+                
+                if ans not in ('y', 'Y'):
+                    sqli = False
+                else:
+                    os.system("rm %s/result_sqlinjection.txt" % path)
     
     
-    # 判断该网站是否经过xss测试
+    if xss == True:
+        
+        # 判断该网站是否经过xss测试
+        if os.path.isfile("%s/result_xss.txt" % path) is True:
+            an = raw_input("The site has tested XSS, whether to re test?[y/N]")
+            
+            if an == '':
+                xss = False
+            else:
+                ans = an[:1]
+                
+                if ans not in ('y', 'Y'):
+                    xss = False        
+                else:
+                    os.system("rm %s/result_xss.txt" % path)
+      
     
-    
-    # 创建测试结果目录及文件
+    # 创建测试结果目录
     if os.path.isdir(path) is False:
         os.system("mkdir %s" % path)
     
-    if os.path.isfile("%s/result_sqlinjection.txt" % path) is False:
-        os.system("touch %s/result_sqlinjection.txt" % path)
+    # 爬取目标站点
     
-    if os.path.isfile("%s/result_xss.txt" % path) is False:
-        os.system("touch %s/result_xss.txt" % path)
+    
+    
+    # 进行测试并输出结果文件
+    if sqli == True:
+        if os.path.isfile("%s/result_sqlinjection.txt" % path) is False:
+            os.system("touch %s/result_sqlinjection.txt" % path)
         
-    
+        fuck_cookies_sqlinjection(target)
+        fuck_get_sqlinjection(target)
+        fuck_post_sqlinjection(target)
+        
+        try:
+            f = open("%s/result_sqlinjection.txt" % path, 'r')
+            content = f.read()
+        except:
+            pass
+        finally:
+            f.close()
+        
+        if content == '':
+            try:
+                f = open("%s/result_sqlinjection.txt" % path, 'a')
+                f.write("This tool has not found SQL injection.")
+            except:
+                pass
+            finally:
+                f.close()
+                
+                
+    if xss == True:
+        if os.path.isfile("%s/result_xss.txt" % path) is False:
+            os.system("touch %s/result_xss.txt" % path)
+        
+        fuck_reflected_xss(target)
+        fuck_storage_xss(target)
+        
+        try:
+            f = open("%s/result_xss.txt" % path, 'r')
+            content = f.read()
+        except:
+            pass
+        finally:
+            f.close()
+        
+        if content == '':
+            try:
+                f = open("%s/result_xss.txt" % path, 'a')
+                f.write("This tool has not found XSS.")
+            except:
+                pass
+            finally:
+                f.close()
+                           
     
     '''
     # 进行sql注入测试    
