@@ -10,50 +10,16 @@ import re
 import cookielib
 import random
 import string
+import chardet
 
 
-# 目标站点(test)
+# 目标站点
 host = ""
 hhost = ""
 
-# 爬到的页面url(test)
-target = {'http://10.206.6.11/new.php?id=2':[],
-          'http://10.206.6.11/book.php':[r'''<form name="from1" id="from1" method="post" action="book.php?action=add">
-			<table border="0" cellspacing="0" cellpadding="0" id="fortab">
-			<tr>
-			<td>标题*：</td>
-			<td><input name="title" type="text"/></td>
-			</tr>
-			<tr>
-			<td>姓名*：</td>
-			<td><input name="name" type="text" /></td>
-			</tr>
-			<tr>
-			<td>Email*：</td>
-			<td><input name="email" type="text" /></td>
-			</tr>
-			<tr>
-			<td>浏览权限：</td>
-			<td><select name="select">
-    			<option value="all">所有人</option>
-    			<option value="mst">管理员</option>
-				</select>
-			</td>
-			
-			<tr>
-			<td>验证码*：</td>
-			<td><input name="capt" type="text" size="5" maxlength="4" />
-			<img id='rand' src='captcha.php'></img><a href='javascript:chk()'>看不清楚</a></td>
-			</tr>
-			
-			</tr>
-			<tr>
-			<td>内容*：</td>
-			<td><textarea name="ms" rows="10"/></textarea></td>
-			</tr>
-			</table>
-			<input type="submit" name="submit" value="提交" class="submails" />
-			</form>''',]}
+# 爬到的页面url及target
+urls = []
+target = {}
 
 # 一些全局变量
 sqli            = True
@@ -64,8 +30,249 @@ output          = './output'
 
 
 
-
+# Spider类:
 # 爬取目标站点所有页面
+# 解析form表单
+# by zhuangzhuang
+class Spider:
+
+    def __init__(self,website):#初始化参数
+        self.siteURL = website#定义要访问的链接
+        self.dic={}#定义返回的字典｛网址->form表｝
+
+    def getPage(self):#得到字符串网页信息
+        kongbai=''
+        url = self.siteURL
+        str=''
+        #print url
+        request = urllib2.Request(url,headers={
+            'Connection': 'Keep-Alive',
+            'Accept': 'text/html, application/xhtml+xml, */*',
+            'Accept-Language': 'en-US,en;q=0.8,zh-Hans-CN;q=0.5,zh-Hans;q=0.3',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko'
+        })
+        try:
+            response = urllib2.urlopen(request)
+        except:
+            pass
+        if 'html' not in response.info().get('content-type'):
+            # print('111111111111111111111111111111')
+            return kongbai
+        #return response.read().decode('gbk')
+        '''while 1:
+            data=response.read(2048)
+            str+=data
+            if not len(data):
+                break'''
+        try:
+            data=response.read()
+        except:
+            data=''
+        encoding_dict = chardet.detect(data)
+        #print encoding
+        web_encoding = encoding_dict['encoding']
+        if web_encoding == 'utf-8' or web_encoding == 'UTF-8':
+            html = data
+        else :
+            html = data.decode('gbk','ignore').encode('utf-8')
+        str=html
+        #print(str)
+        str1=str.replace("\n","")
+        return str1
+    def getPage1(self,urll):#得到字符串网页信息
+        kongbai=''
+        url = urll
+        str=''
+        #print url
+        request = urllib2.Request(url,headers={
+            'Connection': 'Keep-Alive',
+            'Accept': 'text/html, application/xhtml+xml, */*',
+            'Accept-Language': 'en-US,en;q=0.8,zh-Hans-CN;q=0.5,zh-Hans;q=0.3',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko'
+        })
+        try:
+            response = urllib2.urlopen(request,timeout=3)
+        except:
+            return kongbai
+        if 'html' not in response.info().get('content-type'):
+            return kongbai
+        #return response.read().decode('gbk')
+        '''while 1:
+            data=response.read(2048)
+            str+=data
+            if not len(data):
+                break'''
+        data=response.read()
+        encoding_dict = chardet.detect(data)
+        #print encoding
+        web_encoding = encoding_dict['encoding']
+        if web_encoding == 'utf-8' or web_encoding == 'UTF-8':
+            html = data
+        else :
+            html = data.decode('gbk','ignore').encode('utf-8')
+        str=html
+        #print(str)
+        str1=str.replace("\n","")
+        return str1
+    def matchform(self,str1):#输入网页字符串，得到form表
+        str1=str1.replace("\t","")
+        str1=str1.replace("\r","")
+        pattern = re.compile(r"<form.*?</form>")
+        return re.findall(pattern,str1)
+    def getzidain(self,list):#输入form表，得到字典
+        self.dic[self.siteURL]=list
+        #print(self.dic)
+        return self.dic
+    def getwebsite(self,str):#输入网页字符串，得到所有网页链接表
+        #str=self.getPage()
+        kongbai=[]
+        if len(str)==0:
+            return kongbai
+        pattern = re.compile('\.(.*?)\.com')
+        goal=re.search(pattern,self.siteURL)
+        try:
+            haha=goal.group(1)
+        except:
+            haha='你'
+        pattern = re.compile(r'href=\"(.+?)\"')
+        #print len(re.findall(pattern,str))
+        dict={}
+        list=[]
+        list1=[]
+        list2=[]
+        list3=[]
+        for a in re.findall(pattern,str):
+            if a.find(haha)!=-1:
+                if a.find('http')==-1:
+                    if a.find('/')!=-1 or a.find('//')!=-1:
+                        if a.find('//')!=-1:
+                            a='http:'+a
+                        else:
+                            match=re.search('(\/\/.*?)\/',self.siteURL)
+                            if match:
+                                a='http:'+match.group(0)+a
+                            else:
+                                a=self.siteURL+a
+                    else:
+                        match=re.search('\/\/.*\/',self.siteURL)
+                        if match:
+                            a='http:'+match.group(0)+a
+                        else:
+                            a=self.siteURL+'/'+a
+                b=[a,'']
+                dict[b[0]] =b[1]
+            else:
+                if a.find('http')==-1:
+                    if a.find('/')!=-1 or a.find('//')!=-1:
+                        if a.find('//')!=-1:
+                            a='http:'+a
+                        else:
+                            match=re.search('(\/\/.*?)\/',self.siteURL)#一个/的情况
+                            if match:
+                                a='http:'+match.group(0)+a
+                            else:
+                                a=self.siteURL+a
+                    else:
+                        match=re.search('\/\/.*\/',self.siteURL)
+                        if match:
+                            a='http:'+match.group(0)+a
+                        else:
+                            a=self.siteURL+'/'+a
+                b=[a,'']
+                dict[b[0]] =b[1]
+        for e in dict.items():
+            list1.append(e[0]+e[1])
+        for c in list1[:]:
+            match=re.search(r'.*\?.*?=',c)
+            if match:
+                k=match.group(0)
+                if k not in list3:
+                    list3.append(k)
+                    list2.append(c)
+                for d in list1[:]:
+                    if d.find(k)!=-1:
+                        list1.remove(d)
+        list1.extend(list2)
+        return list1
+        #return re.findall(pattern,str)
+    def getcanshu(self,a):#输入表单，得到相应信息
+        all=[]
+        panduan=["checkbox","text","password","radio","hidden","select","textarea"]
+        pattern = re.compile(r'<input.*?>|<textarea.*?>|<select.*?</select>',re.I)
+        #print(re.findall(pattern,a))
+        for b in re.findall(pattern,a):
+            c=[]
+            pattern = re.compile(r'type.*?=.*?\"(.+?)\"',re.I)
+            if re.findall(pattern,b):
+                c.append(re.findall(pattern,b)[0])
+            elif b.find("textarea")!=-1:
+                c.append("textarea")
+            elif b.find("select")!=-1:
+                c.append("select")
+                '''pattern = re.compile(r'name.*?=.*?\"(.+?)\"',re.I)
+                    if len(re.findall(pattern,b))!=0:
+                        c.append(re.findall(pattern,b)[0])
+                    else:
+                        c.append('')'''
+            pattern = re.compile(r'name()*=()*"(.*?)"',re.I)
+            if re.findall(pattern,b):
+                for g in re.findall(pattern,b):
+                    c.append(g[2])
+            else:
+                c.append('')
+            pattern = re.compile(r'value()*=()*"(.*?)"',re.I)
+            if re.findall(pattern,b):
+                guodu=[]
+                for g in re.findall(pattern,b):
+                    guodu.append(g[2])
+                c.append(tuple(guodu))
+                    #print(re.findall(pattern,b))
+            else:
+                c.append(())
+            all.append(c)
+        #print(all)
+        chuli=[]
+        for d in all:
+            if d[0] not in panduan:
+                chuli.append(d)
+        for k in chuli:
+            all.remove(k)
+        chuli1=[]
+        for e in all:
+            for f in all:
+                if e!= f and e[0]==f[0] and e[1] ==f[1]:
+                    e[2]=e[2]+f[2]
+                    chuli1.append(f)
+        for l in chuli1:
+            all.remove(l)
+        return all
+    def getallform(self):#得到所有列表字典
+        urls = []
+        allform={}
+        str1=self.getPage()
+        list=self.getwebsite(str1)
+        for a in list:
+            wangye=self.getPage1(a)
+            list1=self.getwebsite(wangye)
+            formlist=self.matchform(wangye)
+            allform[a]=formlist
+            for b in list1:
+                wangye1=self.getPage1(b)
+                list2=self.getwebsite(wangye1)
+                formlist1=self.matchform(wangye1)
+                allform[b]=formlist1
+                for c in list2:
+                    wangye2=self.getPage1(c)
+                    formlist2=self.matchform(wangye2)
+                    allform[c]=formlist2
+        for url in allform:
+            urls.append(url)
+                                                    
+        for k, v in allform.items():
+            if not v and k.find('?')==-1:
+                allform.pop(k)
+        return allform, urls
+
 
 
 
@@ -79,10 +286,6 @@ def get_randstr(n):
         randstr += ch
         
     return randstr
-
-
-# 解析form表单
-
 
 
 
@@ -118,12 +321,20 @@ def dict_to_list(d, middle):
 # 获取GET请求页面源码
 def get_source(url):
     
+    if url == '':
+        return ''
+    
     headers = {}
     headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0'
     request = urllib2.Request(url, headers=headers)
-    response = urllib2.urlopen(request)
     
-    return response.read()
+    try:
+        response = urllib2.urlopen(request)
+        source = response.read()
+    except:
+        source = ''
+    
+    return source
 
 
 # 解析url
@@ -173,6 +384,7 @@ def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
 def outputfile(url):
     global host
     global read_sqlmap
+    global output
         
     result = ""
     path = "%s/%s/log" % (read_sqlmap, host)
@@ -199,44 +411,33 @@ def outputfile(url):
                 result += (resu).group(0)
             result += "\n\n"
             
-            filepath = "output/%s/result_sqlinjection.txt" % host
+            filepath = "%s/%s/result_sqlinjection.txt" % (output, host)
             
             try:
-                output = open(filepath, 'r')
-            
-                # 若与已得到的结果不重复则写入
-                out = output.read()
-                if result in out:
-                    output.close()
-                else:
-                    output.close()
-                    
-                    try:
-                        output = open(filepath, 'a')
-                        output.write(result)
-                    except:
-                        pass
-                    finally:
-                        output.close()
+                output = open(filepath, 'a')
+                output.write(result)
             except:
                 pass
-    
+            finally:
+                output.close()
+           
     return 0
 
 
 # 生成XSS测试结果文件
-def outputfile2(url, result):
+def outputfile2(result):
     global host
+    global output
     
-    path = "output/%s/result_xss.txt" % host
+    path = "%s/%s/result_xss.txt" % (output, host)
     
     try:
-        f = open(path, 'a')
-        f.write("%s:\n%s" % (url, result))
+        f2 = open(path, 'a')
+        f2.write(result)
     except:
         pass
     finally:
-        f.close()
+        f2.close()
     
     return 0
 
@@ -384,6 +585,7 @@ def fuck_reflected_xss(target):
             pass
         else:
             for line in lines:
+                line = line[:-1]
                 
                 payload = "%s%s" % (hashs, line)
                 
@@ -392,7 +594,7 @@ def fuck_reflected_xss(target):
                 print "[fragment XSS test] : %s" % payload
                 source = get_source(newurl)
                 
-                if line in source:
+                if str(line) in str(source):
                     
                     print "[*] Maybe find a XSS!"
                     
@@ -410,6 +612,7 @@ def fuck_reflected_xss(target):
             paramscp = params.copy()
             
             for line in lines:
+                line = line[:-1]
                 
                 fuzz = line
                 payload = "%s%s" % (str(value), fuzz)
@@ -418,14 +621,17 @@ def fuck_reflected_xss(target):
                 
                 newurl = get_newurl(url, start, hashs, paramscp, param, value, fuzz)
                 
-                source = get_source(newurl)
+                try:
+                    source = get_source(newurl)
+                except:
+                    continue
                 
-                if fuzz in source:
+                if str(fuzz) in str(source):
                     
                     print "[*] Maybe find a XSS!"
                     
-                    result = "Maybe there is a XSS in get parameter %s! Payload : %s" % (str(param), payload)
-                    outputfile2(url, result)                    
+                    result = "Maybe there is a XSS in get parameter %s! in %s\nPayload : %s" % (str(param), url, payload)
+                    outputfile2(result)                    
                     
                     break
     
@@ -435,6 +641,10 @@ def fuck_reflected_xss(target):
 # 检测是否存在存储型XSS
 def fuck_storage_xss(target):
     global hhost
+    global urls
+    
+    # 存储型XSS标识
+    flag = 1
     
     result = ''
         
@@ -451,14 +661,20 @@ def fuck_storage_xss(target):
         
         if forms == []:
             continue
-        
+                
         # 填写form表单并提交
         for form in forms:
+            method = re.search(r"action( |\n)*?=( |\n)*\"((.|\n)*?)\"", form)
+            if method is None:
+                continue
+            if method.group(3).lower() == 'get':
+                continue
+            
             postdata = {}
             action = ''
             
             # 得到表单提交地址
-            goal = re.search(r"action( |\n)*=( |\n)*\"((.|\n)*?)\"", form)
+            goal = re.search(r"action( |\n)*?=( |\n)*\"((.|\n)*?)\"", form)
             if goal is not None:
                 go = goal.group(3)
             
@@ -474,7 +690,7 @@ def fuck_storage_xss(target):
                         if go == '':
                             action = url
                         else:
-                            g = re.search(r'.*/', url)
+                            g = re.search(r'^http(s|)://.*/', url)
                             direc = ''
                     
                             if g is not None:
@@ -487,13 +703,25 @@ def fuck_storage_xss(target):
                 continue
             
             # 填写表单参数
-            parsedform = parseform(form)
+            spiderparseform = Spider(hhost)
+            parsedform = spiderparseform.getcanshu(form)
             
             for param in parsedform:
+                pay = 0
+                
                 if param[0].lower() not in ['text', 'password', 'textarea',]:
                     continue
                 
                 for line in lines:
+                    
+                    
+                    line = line[:-1]
+                    a = line.find('alert(1)')
+                    
+                    if a > 0:
+                        line = line.replace("alert(1)", "alert(%s)" % str(flag))
+                    
+                    
                     payload = line
                     
                     postdata = get_POST_data(parsedform, param, payload)
@@ -502,19 +730,51 @@ def fuck_storage_xss(target):
                     print "[post parameter XSS test] : %s" % payload
                     
                     post_data = urllib.urlencode(postdata)
-                    req = urllib2.urlopen(action, post_data)
                     
-                    source = get_source(url)
+                    try:
+                        req = urllib2.urlopen(action, post_data)
+                    except:
+                        pass
                     
-                    if payload in source:
+                    # 在整个站点寻找测试向量
+                    for aurl in urls:
+                        source = ''
                         
-                        print "[*] Maybe find a XSS!"
+                        try:
+                            source = get_source(aurl)
+                        except:
+                            continue
+                        '''
+                        finally:
+                            print
+                            print payload
+                            print 
+                            if source == '':
+                                print '0'
+                            else:
+                                print '1'
+                                f = open('test.txt', 'a')
+                                f.write("\n\n\n\n\n\n\n\npayload:%s\nurl:%s\n%s" % (payload, aurl, source))
+                                f.close()
+                        '''
+                        # payload = '</textarea><script>alert(1)</script>//'
+                        if str(payload) in str(source):
                         
-                        result = "Maybe there is a XSS in post parameter %s! Payload : %s" % (str(param), payload)
-                        outputfile2(url, result)                    
+                            print "[*] Maybe find a XSS!"
                         
-                        break               
-    
+                            result = "Maybe there is a XSS in post parameter %s\nfrom : %s\nto : %s\nPayload : %s\n" % (str(param), url, aurl, payload)
+                            outputfile2(result)
+                        
+                            flag += 1
+                            pay = 1
+                        
+                            break
+                    if pay == 1:
+                        break
+                        
+                        
+          
+             
     return
 
 # 帮助函数
@@ -551,6 +811,7 @@ def main():
     global host
     global hhost
     global target
+    global urls
     
     global sqli
     global xss
@@ -569,12 +830,12 @@ def main():
     for o, a in opts:
         if o in ("-h", "--help"):
             usage()
-        elif o in ("-s", "--sqli"):
+        elif o in ("-x", "--xss"):
             if xss is False:
                 xss = True
             else:
                 sqli = False
-        elif o in ("-x", "--xss"):
+        elif o in ("-s", "--sqli"):
             if sqli is False:
                 sqli = True
             else:
@@ -658,13 +919,39 @@ def main():
                 else:
                     os.system("rm %s/result_xss.txt" % path)
       
+    if sqli == False and xss == False:
+        print "[*] End."
+        return
+
+    
     
     # 创建测试结果目录
     if os.path.isdir(path) is False:
         os.system("mkdir %s" % path)
     
     # 爬取目标站点
+    print "[*] Start to crawl the site."
     
+    spider = Spider(hhost)
+    target,urls = spider.getallform()
+    
+    print "[*] Crawling down. The url list is: "
+    print
+    for aurl in urls:
+        print aurl
+    print
+    print "[*] Start to scan in 5 seconds."
+    time.sleep(1)
+    print "[*] Start to scan in 4 seconds."
+    time.sleep(1)
+    print "[*] Start to scan in 3 seconds."
+    time.sleep(1)    
+    print "[*] Start to scan in 2 seconds."
+    time.sleep(1)    
+    print "[*] Start to scan in 1 seconds."
+    time.sleep(1)
+    print "[*] Start."
+    print
     
     
     # 进行测试并输出结果文件
@@ -673,7 +960,7 @@ def main():
             os.system("touch %s/result_sqlinjection.txt" % path)
         
         fuck_header_sqlinjection(target)
-        fuck_get_sqlinjection(target)
+        #fuck_get_sqlinjection(target)
         fuck_post_sqlinjection(target)
         
         try:
@@ -719,33 +1006,8 @@ def main():
                 f.close()
                            
     
-    '''
-    # 进行sql注入测试    
-    fuck_cookies_sqlinjection(target)
-    print '--------------------cookies over---------------------'
-            
-    time.sleep(5)    
-       
-    fuck_get_sqlinjection(target)
-    print '----------------------get over-----------------------'
-        
-    time.sleep(5)
-    fuck_post_sqlinjection(target)
-    print '----------------------post over----------------------'
-        
-    time.sleep(5)
-    '''
-    '''
-    # 进行XSS测试
-    fuck_reflected_xss(target)
-    print '------------ reflected xss over ------------'
     
-    time.sleep(5)
-    fuck_storage_xss(target)
-    print '------------ storage xss over ------------'
-    time.sleep(5)
-    '''
-     
+    print "[*] End."
     return 0
 
 if __name__ == '__main__':
