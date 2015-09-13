@@ -13,8 +13,8 @@ import string
 
 
 # 目标站点(test)
-host = "10.206.6.11"
-hhost = "http://10.206.6.11:80"
+host = ""
+hhost = ""
 
 # 爬到的页面url(test)
 target = {'http://10.206.6.11/new.php?id=2':[],
@@ -256,10 +256,13 @@ def sqlmap_post(url):
     
     return 0
 
-# 使用sqlmap进行COOKIES注入测试
-def sqlmap_cookies(url, cookies):
+# 使用sqlmap进行HTTP Header注入测试
+def sqlmap_header(url, cookies):
     
-    os.system("sqlmap -u %s --cookie=%s --batch" % (url, cookies))
+    if cookies == '':
+        os.system("sqlmap -u %s --level 3 --batch" % url)
+    else:
+        os.system("sqlmap -u %s --cookie=%s --level 3 --batch" % (url, cookies))
     
     return 0
 
@@ -305,8 +308,8 @@ def fuck_post_sqlinjection(target):
     return
                 
 
-# 检测是否存在COOKIES类型的注入
-def fuck_cookies_sqlinjection(target):
+# 检测是否存在HTTP Header类型的注入
+def fuck_header_sqlinjection(target):
     
     for url in target:
         start = url.find('?')
@@ -337,14 +340,10 @@ def fuck_cookies_sqlinjection(target):
             
             cj.clear()
             
-            # 如果没有获取页面cookies则跳过
-            if cookies == '':
-                continue
-            
     
-            # 测试cookies注入
+            # 测试HTTP Header注入
             try:
-                sqlmap_cookies(url, cookies)
+                sqlmap_header(url, cookies)
             except:
                 continue
             finally:
@@ -523,15 +522,15 @@ def usage():
     print "Fuck XSS and SQLinjection Tool"
     print
     print "Usage: python fuck_sqlinjection-xss.py -t host"
-    print r'''-s --sqli          - Only SQL injection detection.'''
-    print r'''-x --xss           - Only XSS detection.'''
+    print r'''-s --sqli                        - Only SQL injection detection.'''
+    print r'''-x --xss                         - Only XSS detection.'''
     print r'''-r --read_sqlmap=sqlmap_output_dir   
                                  - Specify sqlmap's output results directory.
                                    Default : /usr/share/sqlmap/output'''
     print r'''-o --output=result_output_dir        
                                  - Specify test result output directory.
                                    Default : ./output'''
-    print r'''-h --help          - Call this using menu.'''
+    print r'''-h --help                        - Call this using menu.'''
     print
     print
     print "Examples: "
@@ -673,7 +672,7 @@ def main():
         if os.path.isfile("%s/result_sqlinjection.txt" % path) is False:
             os.system("touch %s/result_sqlinjection.txt" % path)
         
-        fuck_cookies_sqlinjection(target)
+        fuck_header_sqlinjection(target)
         fuck_get_sqlinjection(target)
         fuck_post_sqlinjection(target)
         
