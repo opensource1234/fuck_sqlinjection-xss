@@ -414,12 +414,12 @@ def outputfile(url):
             filepath = "%s/%s/result_sqlinjection.txt" % (output, host)
             
             try:
-                output = open(filepath, 'a')
-                output.write(result)
+                f = open(filepath, 'a')
+                f.write(result)
             except:
                 pass
             finally:
-                output.close()
+                f.close()
            
     return 0
 
