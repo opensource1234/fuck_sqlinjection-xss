@@ -11,6 +11,11 @@ import cookielib
 import random
 import string
 import chardet
+import Image  
+import ImageEnhance  
+import ImageFilter  
+from pytesser import *
+from shibie import *
 
 
 # 目标站点
@@ -195,6 +200,7 @@ class Spider:
         list1.extend(list2)
         return list1
         #return re.findall(pattern,str)
+    
     def getcanshu(self,a):#输入表单，得到相应信息
         all=[]
         panduan=["checkbox","text","password","radio","hidden","select","textarea"]
@@ -209,11 +215,7 @@ class Spider:
                 c.append("textarea")
             elif b.find("select")!=-1:
                 c.append("select")
-                '''pattern = re.compile(r'name.*?=.*?\"(.+?)\"',re.I)
-                    if len(re.findall(pattern,b))!=0:
-                        c.append(re.findall(pattern,b)[0])
-                    else:
-                        c.append('')'''
+                
             pattern = re.compile(r'name()*=()*"(.*?)"',re.I)
             if re.findall(pattern,b):
                 for g in re.findall(pattern,b):
@@ -246,6 +248,64 @@ class Spider:
         for l in chuli1:
             all.remove(l)
         return all
+    '''    
+    def getcanshu(self,a):#输入字典，得到相应信息表单
+        all=[]
+        panduan=["checkbox","text","password","radio","hidden","select","textarea","yanzheng"]
+        pattern = re.compile(r'<input.*?>.*?<img.*?>|<input.*?>|<textarea.*?>|<select.*?</select>',re.I)
+        #print(re.findall(pattern,a))
+        for b in re.findall(pattern,a):
+            print(b)
+            c=[]
+            pattern = re.compile(r'type.*?=.*?\"(.+?)\"',re.I)
+            if re.findall(pattern,b):
+                if b.find('img')!=-1:
+                    c.append('yanzheng')
+                else:
+                    c.append(re.findall(pattern,b)[0])
+            elif b.find("textarea")!=-1:
+                c.append("textarea")
+            elif b.find("select")!=-1:
+                c.append("select")
+                
+            pattern = re.compile(r'name()*=()*"(.*?)"',re.I)
+            if re.findall(pattern,b):
+                for g in re.findall(pattern,b):
+                    c.append(g[2])
+            else:
+                c.append('')
+            pattern = re.compile(r'value()*=()*"(.*?)"',re.I)
+            if re.findall(pattern,b):
+                guodu=[]
+                for g in re.findall(pattern,b):
+                    guodu.append(g[2])
+                c.append(tuple(guodu))
+                    #print(re.findall(pattern,b))
+            else:
+                pattern = re.compile(r"src.*?=.*?'(.*?)'",re.I)
+                if re.findall(pattern,b):
+                    c.append(tuple(re.findall(pattern,b)))
+                else:
+                    c.append(())
+            all.append(c)
+        #print(all)
+        chuli=[]
+        for d in all:
+            if d[0] not in panduan:
+                chuli.append(d)
+        for k in chuli:
+            all.remove(k)
+        chuli1=[]
+        for e in all:
+            for f in all:
+                if e!= f and e[0]==f[0] and e[1] ==f[1]:
+                    e[2]=e[2]+f[2]
+                    chuli1.append(f)
+        for l in chuli1:
+            all.remove(l)
+        return all
+    '''
+    
     def getallform(self):#得到所有列表字典
         urls = []
         allform={}
@@ -525,8 +585,11 @@ def fuck_header_sqlinjection(target):
             opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
     
             opener.add_handler = [('User-agent','Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0')]
-    
-            opener.open(url)
+            
+            try:
+                opener.open(url)
+            except:
+                pass
     
             cookies = []
             coo = ''
@@ -574,7 +637,10 @@ def fuck_reflected_xss(target):
         params = {}
         hashs = ''
         
-        start, params, hashs = url_params(url)
+        try:
+            start, params, hashs = url_params(url)
+        except:
+            continue
         
         newurl = ''
         source = ''
@@ -598,8 +664,8 @@ def fuck_reflected_xss(target):
                     
                     print "[*] Maybe find a XSS!"
                     
-                    result = "Maybe there is a XSS in fragment! Payload : %s" % payload
-                    outputfile2(url, result)
+                    result = "Maybe there is a XSS in fragment!\nurl : %s\nPayload : %s\n" % (url, payload)
+                    outputfile2(result)
                     
                     break        
                               
@@ -630,7 +696,7 @@ def fuck_reflected_xss(target):
                     
                     print "[*] Maybe find a XSS!"
                     
-                    result = "Maybe there is a XSS in get parameter %s! in %s\nPayload : %s" % (str(param), url, payload)
+                    result = "Maybe there is a XSS in get parameter %s!\nurl: %s\nPayload : %s\n" % (str(param), url, payload)
                     outputfile2(result)                    
                     
                     break
@@ -734,7 +800,7 @@ def fuck_storage_xss(target):
                     try:
                         req = urllib2.urlopen(action, post_data)
                     except:
-                        pass
+                        continue
                     
                     # 在整个站点寻找测试向量
                     for aurl in urls:

