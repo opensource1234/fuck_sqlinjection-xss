@@ -11,11 +11,19 @@ import cookielib
 import random
 import string
 import chardet
-import Image  
-import ImageEnhance  
-import ImageFilter  
+import subprocess
+import httplib
+import cgi
+
+from platform import system
+from random import randint
 from pytesser import *
 from shibie import *
+
+
+reload(sys)  
+sys.setdefaultencoding('utf8')  
+
 
 
 # 目标站点
@@ -471,6 +479,17 @@ def outputfile(url):
                 result += (resu).group(0)
             result += "\n\n"
             
+            # 结果写入result.txt
+            a = url
+            b = 'SQL injection'
+            c1 = re.search(r'Parameter:(.*?)\n', result)
+            if c1 is not None:
+                c = c1.group(1)
+            d = result
+            e = u'过滤'
+            outresult(a, b, c, d, e)
+            
+            
             filepath = "%s/%s/result_sqlinjection.txt" % (output, host)
             
             try:
@@ -667,6 +686,13 @@ def fuck_reflected_xss(target):
                     result = "Maybe there is a XSS in fragment!\nurl : %s\nPayload : %s\n" % (url, payload)
                     outputfile2(result)
                     
+                    a = url
+                    b = 'XSS'
+                    c = 'fragment'
+                    d = result
+                    e = u'编码/过滤'
+                    outresult(a, b, c, d, e)
+                    
                     break        
                               
         # 测试GET参数中的XSS
@@ -697,7 +723,16 @@ def fuck_reflected_xss(target):
                     print "[*] Maybe find a XSS!"
                     
                     result = "Maybe there is a XSS in get parameter %s!\nurl: %s\nPayload : %s\n" % (str(param), url, payload)
-                    outputfile2(result)                    
+                    outputfile2(result)
+                    
+                    a = url
+                    b = 'XSS'
+                    c1 = re.search(r'parameter(.*?)\n', result)
+                    if c1 is not None:
+                        c = c1.group(1)
+                    d = result
+                    e = u'编码/过滤'
+                    outresult(a, b, c, d, e)
                     
                     break
     
@@ -828,8 +863,17 @@ def fuck_storage_xss(target):
                         
                             print "[*] Maybe find a XSS!"
                         
-                            result = "Maybe there is a XSS in post parameter %s\nfrom : %s\nto : %s\nPayload : %s\n" % (str(param), url, aurl, payload)
+                            result = "Maybe there is a XSS in post parameter %s\nfrom : %s\nto : %s\nPayload : %s\n" % (str(param[1]), url, aurl, payload)
                             outputfile2(result)
+                            
+                            a = url
+                            b = 'XSS'
+                            c1 = re.search(r'parameter(.*?)\n', result)
+                            if c1 is not None:
+                                c = c1.group(1)
+                            d = result
+                            e = u'编码/过滤'
+                            outresult(a, b, c, d, e)                            
                         
                             flag += 1
                             pay = 1
@@ -842,6 +886,202 @@ def fuck_storage_xss(target):
           
              
     return
+
+# 输出结果文件
+def outresult(a, b, c, d, e):
+    global output
+    global host
+    
+    
+    line = "%s::::%s::::%s::::%s::::%s" % (a, b, c, d, e)
+    
+    line = line.replace('\n', '<br>')
+    line = line + '\n'
+    
+    f = open('%s/%s/result.txt' % (output, host), 'a')
+    f.write(line)
+    f.close()
+    
+    return 0 
+
+
+# 生成HTML结果文件
+def shell_storm(location1,location2):
+    '''
+    os = system()
+    if os == 'Linux':
+        config_location = "config/sandi.conf"
+    elif os == "Windows":
+        config_location = "config\\sandi.conf"
+    else:
+        config_location = "config/sandi.conf"
+    
+    conf_file = open(config_location, "r").readlines()
+    for cr in conf_file:
+        cr = cr.rstrip()  
+        match1 = re.search("BROWSER=", cr)
+        if match1:
+            browser = cr.replace("BROWSER=", "")
+            browser = browser+" "
+        match2 = re.search("OUTPUT=", cr)
+        if match2:
+            output = cr.replace("OUTPUT=", "")
+
+    session = randint(11111, 99999)
+
+    filename = "result-shell-storm-%d.html"%session 
+    location = output+filename
+    
+
+'''
+    head = """
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Sandi Result Page</title>
+
+<style type="text/css">
+
+    html, body, div, span, object, iframe,
+    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+    abbr, address, cite, code,
+    del, dfn, em, img, ins, kbd, q, samp,
+    small, strong, sub, sup, var,
+    b, i,
+    dl, dt, dd, ol, ul, li,
+    fieldset, form, label, legend,
+    table, caption, tbody, tfoot, thead, tr, th, td {
+        margin:0;
+        padding:0;
+        border:0;
+        outline:0;
+        font-size:100%;
+        vertical-align:baseline;
+        background:transparent;
+    }
+    
+    body {
+        margin:0;
+        padding:0;
+        font:12px/15px "Helvetica Neue",Arial, Helvetica, sans-serif;
+        color: #555;
+        background:#f5f5f5 url(bg.jpg);
+    }
+    
+    a {color:#666;}
+    
+    #content {width:85%; max-width:1000px; margin:1% auto 0;}
+    
+    /*
+    Pretty Table Styling
+    CSS Tricks also has a nice writeup: http://css-tricks.com/feature-table-design/
+    */
+    
+    table {
+        overflow:hidden;
+        border:1px solid #d3d3d3;
+        background:#fefefe;
+        width:100%;
+        margin:5% auto 0;
+        -moz-border-radius:5px; /* FF1+ */
+        -webkit-border-radius:5px; /* Saf3-4 */
+        border-radius:5px;
+        -moz-box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+        -webkit-box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    th, td {padding:18px 28px 18px; text-align:left; }
+    
+    th {padding-top:22px; text-shadow: 1px 1px 1px #fff; background:#e8eaeb;}
+    
+    td {border-top:1px solid #e0e0e0; border-right:1px solid #e0e0e0;}
+    
+    tr.odd-row td {background:#f6f6f6;}
+    
+    td.first, th.first {text-align:left}
+    
+    td.last {border-right:none;}
+    
+    /*
+    Background gradients are completely unnecessary but a neat effect.
+    */
+    
+    td {
+        background: -moz-linear-gradient(100% 25% 90deg, #fefefe, #f9f9f9);
+        background: -webkit-gradient(linear, 0% 0%, 0% 25%, from(#f9f9f9), to(#fefefe));
+    }
+    
+    tr.odd-row td {
+        background: -moz-linear-gradient(100% 25% 90deg, #f6f6f6, #f1f1f1);
+        background: -webkit-gradient(linear, 0% 0%, 0% 25%, from(#f1f1f1), to(#f6f6f6));
+    }
+    
+    th {
+        background: -moz-linear-gradient(100% 20% 90deg, #e8eaeb, #ededed);
+        background: -webkit-gradient(linear, 0% 0%, 0% 20%, from(#ededed), to(#e8eaeb));
+    }
+    
+
+
+</style>
+
+</head>
+<body>
+<center><h1>The result</h1></center>
+<div id="content"  style="margin:0 auto;text-align:center">
+
+    <table cellspacing="0"  >
+    <tr><th>url</th><th>type</th><th>parameter</th><th>description</th><th>solution</td></tr>
+    """
+    location=location2
+    try:
+        file0 = open(location, "w")
+        file0.write(head)
+        file0.close()
+        #req = httplib.HTTPConnection("shell-storm.org")
+        #req.request("GET", "/api/?s="+str(value))
+        #res = req.getresponse()
+        res= open(location1,"r")
+        data_1 = res.read().split('\n')
+    except Exception, e:
+        print "[!]Error : %s"%e
+    for data in data_1:
+        try:
+            data0 = data.split("::::")
+            url = data0[0]
+            bugtype = data0[1]
+            bugparameter = data0[2]
+            description = cgi.escape(data0[3])
+            description = description.replace('&lt;br&gt;','<br>')
+            solution = data0[4]
+        except(IndexError):
+            pass
+        if url:
+            if bugtype:
+                if bugparameter:
+                    if description:
+                        file1 = open(location, "a")
+                        
+                        current_info = "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"%(url,bugtype,bugparameter,description,solution)
+                        file1.write(current_info+"\n")
+                        file1.close()
+    foot = """
+         </table>
+
+</div>
+
+</body>
+</html>
+"""
+
+    file2 = open(location, "a")
+    file2.write(foot)
+    file2.close()
+    #subprocess.Popen(browser+location, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+
+
 
 # 帮助函数
 def usage():
@@ -994,6 +1234,15 @@ def main():
     # 创建测试结果目录
     if os.path.isdir(path) is False:
         os.system("mkdir %s" % path)
+        
+    # 创建result.txt
+    if os.path.isfile("%s/result.txt" % path):
+        os.system("rm %s/result.txt" % path)
+        os.system("touch %s/result.txt" % path)
+    
+    if os.path.isfile("%s/result.html" % path):
+        os.system("rm %s/result.html" % path)
+    
     
     # 爬取目标站点
     print "[*] Start to crawl the site."
@@ -1071,6 +1320,12 @@ def main():
             finally:
                 f.close()
                            
+    
+    try:
+        shell_storm("%s/result.txt" % path, "%s/result.html" % path)
+        os.system("rm %s/result.txt" % path)
+    except:
+        print 'Create HTML document failure!'
     
     
     print "[*] End."
