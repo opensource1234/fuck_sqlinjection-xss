@@ -107,8 +107,10 @@ class Spider:
             response = urllib2.urlopen(request,timeout=3)
         except:
             return kongbai
+        
         if 'html' not in response.info().get('content-type'):
             return kongbai
+        
         #return response.read().decode('gbk')
         '''while 1:
             data=response.read(2048)
@@ -438,6 +440,11 @@ def url_params(url):
 # 重构url
 def get_newurl(url, start, hashs, paramscp, param, value, fuzz):
     
+    if paramscp == {}:
+        newurl = url.replace('#.*', hashs)
+        return newurl
+        
+    
     paramscp[param] = "%s%s" % (str(value), str(fuzz))
     newkeys = dict_to_list(paramscp, '=')
     newkeys = '&'.join(newkeys)
@@ -669,6 +676,9 @@ def fuck_reflected_xss(target):
         if hashs == "":
             pass
         else:
+            paramscp = {}
+            param = ''
+            value = ''
             for line in lines:
                 line = line[:-1]
                 
