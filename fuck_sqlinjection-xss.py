@@ -1174,6 +1174,10 @@ def main():
             
             if b is None:
                 host = c
+                ss = host.find(':')
+                if ss > 0:
+                    host = host[:ss]
+                
                 hhost = "http://%s" % c
             else:
                 hhost = c
@@ -1181,6 +1185,9 @@ def main():
                 e = re.search(r'^http(|s)://(.*)', c)
                 if e is not None:
                     host = e.group(2)
+                    ss = host.find(':')
+                    if ss > 0:
+                        host = host[:ss]                    
         else:
             assert False, "Unhandled Option"
         
@@ -1324,6 +1331,9 @@ def main():
     try:
         shell_storm("%s/result.txt" % path, "%s/result.html" % path)
         os.system("rm %s/result.txt" % path)
+        
+        print 'Opening the result...'
+        os.system("iceweasel %s/result.html" % path)
     except:
         print 'Create HTML document failure!'
     
