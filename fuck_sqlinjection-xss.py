@@ -775,7 +775,7 @@ def fuck_storage_xss(target):
                 
         # 填写form表单并提交
         for form in forms:
-            method = re.search(r"action( |\n)*?=( |\n)*\"((.|\n)*?)\"", form)
+            method = re.search(r"method( |\n)*?=( |\n)*\"((.|\n)*?)\"", form)
             if method is None:
                 continue
             if method.group(3).lower() == 'get':
